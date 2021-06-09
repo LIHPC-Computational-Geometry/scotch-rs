@@ -3,6 +3,8 @@
 #![allow(unused_unsafe)]
 
 use scotch_sys as s;
+use std::ffi;
+use std::fmt;
 use std::fs;
 use std::io;
 use std::mem;
@@ -35,6 +37,22 @@ fn bindings_are_for_the_correct_version_of_scotch() {
 /// work.
 pub type Num = s::SCOTCH_Num;
 
+#[derive(Debug)]
+#[non_exhaustive]
+pub enum Error {
+    Other,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Scotch function returned an error")
+    }
+}
+
+impl std::error::Error for Error {}
+
+pub type Result<T> = std::result::Result<T, Error>;
+
 pub struct Graph {
     inner: s::SCOTCH_Graph,
 }
@@ -46,7 +64,7 @@ impl Graph {
         // SAFETY: inner should be initialized if SCOTCH_graphInit returns zero.
         let inner = unsafe {
             if s::SCOTCH_graphInit(inner.as_mut_ptr()) != 0 {
-                panic!("Scotch internal error");
+                panic!("Scotch internal error during graph initialization");
             }
             inner.assume_init()
         };
@@ -140,7 +158,7 @@ impl Graph {
         vlbltab: &[Num],
         edgetab: &[Num],
         edlotab: &[Num],
-    ) -> Result<(), ()> {
+    ) -> Result<()> {
         assert!(verttab.len() < Num::MAX as usize, "Array too large");
         assert!(edgetab.len() < Num::MAX as usize, "Array too large");
 
@@ -203,20 +221,20 @@ impl Graph {
                 edlotab,
             );
             if ret_code != 0 {
-                return Err(());
+                return Err(Error::Other);
             }
         }
 
         Ok(())
     }
 
-    pub fn check(&self) -> Result<(), ()> {
+    pub fn check(&self) -> Result<()> {
         let inner = &self.inner as *const s::SCOTCH_Graph;
         let ret_code = unsafe { s::SCOTCH_graphCheck(inner) };
         if ret_code == 0 {
             Ok(())
         } else {
-            Err(())
+            Err(Error::Other)
         }
     }
 }
@@ -226,6 +244,47 @@ impl Drop for Graph {
         unsafe {
             let inner = &mut self.inner as *mut s::SCOTCH_Graph;
             s::SCOTCH_graphFree(inner);
+        }
+    }
+}
+
+pub struct Strategy {
+    inner: s::SCOTCH_Strat,
+}
+
+impl Strategy {
+    pub fn new() -> Strategy {
+        let mut inner = mem::MaybeUninit::uninit();
+
+        let inner = unsafe {
+            if s::SCOTCH_stratInit(inner.as_mut_ptr()) != 0 {
+                panic!("Scotch internal error");
+            }
+            inner.assume_init()
+        };
+
+        Strategy { inner }
+    }
+
+    pub fn graph_part_ovl(&mut self, strategy_string: impl AsRef<ffi::CStr>) -> Result<()> {
+        let inner = &mut self.inner as *mut s::SCOTCH_Strat;
+        let strategy_string = strategy_string.as_ref().as_ptr();
+
+        unsafe {
+            if s::SCOTCH_stratGraphPartOvl(inner, strategy_string) != 0 {
+                return Err(Error::Other);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Drop for Strategy {
+    fn drop(&mut self) {
+        unsafe {
+            let inner = &mut self.inner as *mut s::SCOTCH_Strat;
+            s::SCOTCH_stratFree(inner);
         }
     }
 }
