@@ -8,6 +8,7 @@ use std::mem;
 use std::os::unix;
 use std::path;
 use std::ptr;
+use std::slice;
 
 /// Deconstructed graph data.
 ///
@@ -217,6 +218,87 @@ impl Graph {
         } else {
             Err(Error::Other)
         }
+    }
+
+    /// Underlying graph data.
+    pub fn data(&self) -> Data<'_> {
+        let mut baseval_raw = mem::MaybeUninit::uninit();
+        let mut vertnbr_raw = mem::MaybeUninit::uninit();
+        let mut verttab_raw = mem::MaybeUninit::uninit();
+        let mut vendtab_raw = mem::MaybeUninit::uninit();
+        let mut velotab_raw = mem::MaybeUninit::uninit();
+        let mut vlbltab_raw = mem::MaybeUninit::uninit();
+        let mut edgenbr_raw = mem::MaybeUninit::uninit();
+        let mut edgetab_raw = mem::MaybeUninit::uninit();
+        let mut edlotab_raw = mem::MaybeUninit::uninit();
+
+        let inner = &self.inner as *const s::SCOTCH_Graph;
+
+        let d = unsafe {
+            s::SCOTCH_graphData(
+                inner,
+                baseval_raw.as_mut_ptr(),
+                vertnbr_raw.as_mut_ptr(),
+                verttab_raw.as_mut_ptr(),
+                vendtab_raw.as_mut_ptr(),
+                velotab_raw.as_mut_ptr(),
+                vlbltab_raw.as_mut_ptr(),
+                edgenbr_raw.as_mut_ptr(),
+                edgetab_raw.as_mut_ptr(),
+                edlotab_raw.as_mut_ptr(),
+            );
+
+            let baseval_raw = baseval_raw.assume_init();
+            let vertnbr_raw = crate::trusted_num_to_usize(vertnbr_raw.assume_init());
+            let verttab_raw = verttab_raw.assume_init();
+            let vendtab_raw = vendtab_raw.assume_init();
+            let velotab_raw = velotab_raw.assume_init();
+            let vlbltab_raw = vlbltab_raw.assume_init();
+            let edgenbr_raw = crate::trusted_num_to_usize(edgenbr_raw.assume_init());
+            let edgetab_raw = edgetab_raw.assume_init();
+            let edlotab_raw = edlotab_raw.assume_init();
+
+            let verttab: &[Num];
+            let vendtab: &[Num];
+            if vendtab_raw.is_null() {
+                verttab = slice::from_raw_parts(verttab_raw, vertnbr_raw + 1);
+                vendtab = &[];
+            } else {
+                verttab = slice::from_raw_parts(verttab_raw, vertnbr_raw);
+                vendtab = slice::from_raw_parts(vendtab_raw, vertnbr_raw);
+            };
+            let velotab = if velotab_raw.is_null() {
+                &[]
+            } else {
+                slice::from_raw_parts(velotab_raw, vertnbr_raw)
+            };
+            let vlbltab = if vlbltab_raw.is_null() {
+                &[]
+            } else {
+                slice::from_raw_parts(vlbltab_raw, vertnbr_raw)
+            };
+            let edgetab = slice::from_raw_parts(edgetab_raw, edgenbr_raw);
+            let edlotab = if edlotab_raw.is_null() {
+                &[]
+            } else {
+                slice::from_raw_parts(edlotab_raw, vertnbr_raw)
+            };
+
+            Data {
+                baseval: baseval_raw,
+                verttab,
+                vendtab,
+                velotab,
+                vlbltab,
+                edgetab,
+                edlotab,
+            }
+        };
+
+        #[cfg(debug_assertions)]
+        d.check();
+
+        d
     }
 }
 

@@ -35,6 +35,12 @@ fn bindings_are_for_the_correct_version_of_scotch() {
 /// work.
 pub type Num = s::SCOTCH_Num;
 
+fn trusted_num_to_usize(n: Num) -> usize {
+    use std::convert::TryFrom;
+
+    usize::try_from(n).expect(&format!("Scotch returned a bad size: {}", n))
+}
+
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
