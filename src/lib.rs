@@ -28,7 +28,12 @@ fn bindings_are_for_the_correct_version_of_scotch() {
     );
 }
 
-type Num = i32;
+/// Scotch's numeral type.
+///
+/// It is defined as a signed C `int`.  In most platforms it maps to an [i32].  However it can also
+/// map to an [i16].  In both cases, most functions and associated constants from both types will
+/// work.
+pub type Num = s::SCOTCH_Num;
 
 pub struct Graph {
     inner: s::SCOTCH_Graph,
@@ -122,8 +127,8 @@ impl Graph {
     ///     2. `velotab`, if non-empty, must have the same length as `verttab`, and
     ///     3. `vlbltab`, if non-empty, must have the same length as `verttab`, and
     /// - `edlotab`, if non-empty, must have the same length as `edgetab`.
-    /// - The length of `verttab` must be [i32::MAX] or less.
-    /// - The length of `edgetab` must be [i32::MAX] or less.
+    /// - The length of `verttab` must fit in a [Num],
+    /// - The length of `edgetab` must fit in a [Num].
     ///
     /// If any of those conditions is not met, this function will panic.
     pub fn build(
