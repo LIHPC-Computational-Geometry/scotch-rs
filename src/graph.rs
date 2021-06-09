@@ -9,6 +9,82 @@ use std::os::unix;
 use std::path;
 use std::ptr;
 
+/// Deconstructed graph data.
+///
+/// # Invariants
+///
+/// This structure ensures the following invariants are met:
+///
+/// - if `vendtab` is empty,
+///     1. `verttab` must be non-empty,
+///     2. `velotab`, if non-empty, must have exactly one less element than `verttab`, and
+///     3. `vlbltab`, if non-empty, must have exactly one less element than `verttab`,
+/// - if `vendtab` is non-empty,
+///     1. `verttab` and `vendtab` must have the same length,
+///     2. `velotab`, if non-empty, must have the same length as `verttab`, and
+///     3. `vlbltab`, if non-empty, must have the same length as `verttab`, and
+/// - `edlotab`, if non-empty, must have the same length as `edgetab`.
+/// - The length of `verttab` must fit in a [Num],
+/// - The length of `edgetab` must fit in a [Num].
+pub struct Data<'a> {
+    baseval: Num,
+    verttab: &'a [Num],
+    vendtab: &'a [Num],
+    velotab: &'a [Num],
+    vlbltab: &'a [Num],
+    edgetab: &'a [Num],
+    edlotab: &'a [Num],
+}
+
+impl<'a> Data<'a> {
+    /// Group-up graph data.
+    ///
+    /// # Panics
+    ///
+    /// The invariants of [Data] must be uphold, otherwise this function will panic.
+    pub fn new(
+        baseval: Num,
+        verttab: &'a [Num],
+        vendtab: &'a [Num],
+        velotab: &'a [Num],
+        vlbltab: &'a [Num],
+        edgetab: &'a [Num],
+        edlotab: &'a [Num],
+    ) -> Data<'a> {
+        let d = Data { baseval, verttab, vendtab, velotab, vlbltab, edgetab, edlotab };
+        d.check();
+        d
+    }
+
+    /// Panic iff the data structure is invalid.
+    fn check(&self) {
+        assert!(self.baseval == 0 || self.baseval == 1);
+        assert!(self.verttab.len() < Num::MAX as usize, "Array too large");
+        assert!(self.edgetab.len() < Num::MAX as usize, "Array too large");
+
+        if self.vendtab.is_empty() {
+            assert_ne!(self.verttab.len(), 0);
+            if !self.velotab.is_empty() {
+                assert_eq!(self.verttab.len(), 1 + self.velotab.len());
+            }
+            if !self.vlbltab.is_empty() {
+                assert_eq!(self.verttab.len(), 1 + self.vlbltab.len());
+            }
+        } else {
+            assert_eq!(self.verttab.len(), self.vendtab.len());
+            if !self.velotab.is_empty() {
+                assert_eq!(self.verttab.len(), self.velotab.len());
+            }
+            if !self.vlbltab.is_empty() {
+                assert_eq!(self.verttab.len(), self.vlbltab.len());
+            }
+        }
+        if !self.edlotab.is_empty() {
+            assert_eq!(self.edgetab.len(), self.edlotab.len());
+        }
+    }
+}
+
 pub struct Graph {
     inner: s::SCOTCH_Graph,
 }
@@ -87,77 +163,26 @@ impl Graph {
     ///
     /// During development stage, it is recommended to call [Graph::check] after calling this
     /// function, to ensure graph data is consistent.
-    ///
-    /// # Panics
-    ///
-    /// This function requires the following:
-    ///
-    /// - if `vendtab` is empty,
-    ///     1. `verttab` must be non-empty,
-    ///     2. `velotab`, if non-empty, must have exactly one less element than `verttab`, and
-    ///     3. `vlbltab`, if non-empty, must have exactly one less element than `verttab`,
-    /// - if `vendtab` is non-empty,
-    ///     1. `verttab` and `vendtab` must have the same length,
-    ///     2. `velotab`, if non-empty, must have the same length as `verttab`, and
-    ///     3. `vlbltab`, if non-empty, must have the same length as `verttab`, and
-    /// - `edlotab`, if non-empty, must have the same length as `edgetab`.
-    /// - The length of `verttab` must fit in a [Num],
-    /// - The length of `edgetab` must fit in a [Num].
-    ///
-    /// If any of those conditions is not met, this function will panic.
-    pub fn build(
-        &mut self,
-        baseval: Num,
-        verttab: &[Num],
-        vendtab: &[Num],
-        velotab: &[Num],
-        vlbltab: &[Num],
-        edgetab: &[Num],
-        edlotab: &[Num],
-    ) -> Result<()> {
-        assert!(verttab.len() < Num::MAX as usize, "Array too large");
-        assert!(edgetab.len() < Num::MAX as usize, "Array too large");
-
-        if vendtab.is_empty() {
-            assert_ne!(verttab.len(), 0);
-            if !velotab.is_empty() {
-                assert_eq!(verttab.len(), 1 + velotab.len());
-            }
-            if !vlbltab.is_empty() {
-                assert_eq!(verttab.len(), 1 + vlbltab.len());
-            }
-        } else {
-            assert_eq!(verttab.len(), vendtab.len());
-            if !velotab.is_empty() {
-                assert_eq!(verttab.len(), velotab.len());
-            }
-            if !vlbltab.is_empty() {
-                assert_eq!(verttab.len(), vlbltab.len());
-            }
-        }
-        if !edlotab.is_empty() {
-            assert_eq!(edgetab.len(), edlotab.len());
-        }
-
-        let vendtab = if vendtab.is_empty() {
+    pub fn build(&mut self, data: &Data) -> Result<()> {
+        let vendtab = if data.vendtab.is_empty() {
             ptr::null()
         } else {
-            vendtab.as_ptr()
+            data.vendtab.as_ptr()
         };
-        let velotab = if velotab.is_empty() {
+        let velotab = if data.velotab.is_empty() {
             ptr::null()
         } else {
-            velotab.as_ptr()
+            data.velotab.as_ptr()
         };
-        let vlbltab = if vlbltab.is_empty() {
+        let vlbltab = if data.vlbltab.is_empty() {
             ptr::null()
         } else {
-            vlbltab.as_ptr()
+            data.vlbltab.as_ptr()
         };
-        let edlotab = if edlotab.is_empty() {
+        let edlotab = if data.edlotab.is_empty() {
             ptr::null()
         } else {
-            edlotab.as_ptr()
+            data.edlotab.as_ptr()
         };
 
         let inner = &mut self.inner as *mut s::SCOTCH_Graph;
@@ -166,14 +191,14 @@ impl Graph {
         unsafe {
             let ret_code = s::SCOTCH_graphBuild(
                 inner,
-                baseval,
-                verttab.len() as Num,
-                verttab.as_ptr(),
+                data.baseval,
+                data.verttab.len() as Num,
+                data.verttab.as_ptr(),
                 vendtab,
                 velotab,
                 vlbltab,
-                edgetab.len() as Num,
-                edgetab.as_ptr(),
+                data.edgetab.len() as Num,
+                data.edgetab.as_ptr(),
                 edlotab,
             );
             if ret_code != 0 {
