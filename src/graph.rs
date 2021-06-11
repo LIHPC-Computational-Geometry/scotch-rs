@@ -52,7 +52,15 @@ impl<'a> Data<'a> {
         edgetab: &'a [Num],
         edlotab: &'a [Num],
     ) -> Data<'a> {
-        let d = Data { baseval, verttab, vendtab, velotab, vlbltab, edgetab, edlotab };
+        let d = Data {
+            baseval,
+            verttab,
+            vendtab,
+            velotab,
+            vlbltab,
+            edgetab,
+            edlotab,
+        };
         d.check();
         d
     }
@@ -86,11 +94,13 @@ impl<'a> Data<'a> {
     }
 }
 
+/// Equivalent of `SCOTCH_Graph`.
 pub struct Graph {
     inner: s::SCOTCH_Graph,
 }
 
 impl Graph {
+    /// Equivalent of `SCOTCH_graphInit`.
     pub fn new() -> Graph {
         let mut inner = mem::MaybeUninit::uninit();
 

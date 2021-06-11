@@ -24,7 +24,7 @@ fn bindings_are_for_the_correct_version_of_scotch() {
         BINDINGS_VERSION,
         BINDINGS_RELEASE,
         s::SCOTCH_VERSION,
-        s::SCOTCH_RELEASE
+        s::SCOTCH_RELEASE,
     );
 }
 
