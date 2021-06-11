@@ -1,6 +1,7 @@
 use crate::Error;
 use crate::Num;
 use crate::Result;
+use crate::Strategy;
 use scotch_sys as s;
 use std::fs;
 use std::io;
@@ -91,6 +92,19 @@ impl<'a> Data<'a> {
         if !self.edlotab.is_empty() {
             assert_eq!(self.edgetab.len(), self.edlotab.len());
         }
+    }
+
+    pub fn vertnbr(&self) -> Num {
+        let verttab_len = self.verttab.len();
+        if self.vendtab.is_empty() {
+            (verttab_len - 1) as Num
+        } else {
+            verttab_len as Num
+        }
+    }
+
+    pub fn baseval(&self) -> Num {
+        self.baseval
     }
 }
 
@@ -309,6 +323,41 @@ impl Graph {
         d.check();
 
         d
+    }
+
+    /// Compute a partition with overlap of the given graph structure with respect to the given
+    /// strategy.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the length of parttab is lower than the number of vertices.
+    ///
+    /// # Mutability
+    ///
+    /// While this function modifies neither the graph nor the strategy, Scotch doesn't specify any
+    /// `const` modifier and the Rust borrows must be mutable.
+    pub fn part_ovl(
+        &mut self,
+        num_parts: Num,
+        strategy: &mut Strategy,
+        parttab: &mut [Num],
+    ) -> Result<()> {
+        assert!(
+            self.data().vertnbr() as usize <= parttab.len(),
+            "parttab's length must be greater or equal to the number of vertices",
+        );
+
+        let inner_graph = &mut self.inner as *mut s::SCOTCH_Graph;
+        let inner_strat = &mut strategy.inner as *mut s::SCOTCH_Strat;
+        let parttab = parttab.as_mut_ptr();
+
+        unsafe {
+            if s::SCOTCH_graphPartOvl(inner_graph, num_parts, inner_strat, parttab) != 0 {
+                return Err(Error::Other);
+            }
+        }
+
+        Ok(())
     }
 }
 
