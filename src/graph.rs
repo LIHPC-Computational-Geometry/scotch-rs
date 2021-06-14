@@ -29,13 +29,14 @@ use std::slice;
 /// - The length of `verttab` must fit in a [Num],
 /// - The length of `edgetab` must fit in a [Num].
 pub struct Data<'a> {
-    baseval: Num,
-    verttab: &'a [Num],
-    vendtab: &'a [Num],
-    velotab: &'a [Num],
-    vlbltab: &'a [Num],
-    edgetab: &'a [Num],
-    edlotab: &'a [Num],
+    pub baseval: Num,
+    pub verttab: &'a [Num],
+    pub vendtab: &'a [Num],
+    pub velotab: &'a [Num],
+    pub vlbltab: &'a [Num],
+    pub edgetab: &'a [Num],
+    pub edlotab: &'a [Num],
+    _private_field: (), // allow new fields to be added
 }
 
 impl<'a> Data<'a> {
@@ -61,6 +62,7 @@ impl<'a> Data<'a> {
             vlbltab,
             edgetab,
             edlotab,
+            _private_field: (),
         };
         d.check();
         d
@@ -101,10 +103,6 @@ impl<'a> Data<'a> {
         } else {
             verttab_len as Num
         }
-    }
-
-    pub fn baseval(&self) -> Num {
-        self.baseval
     }
 }
 
@@ -245,6 +243,8 @@ impl Graph {
     }
 
     /// Underlying graph data.
+    ///
+    /// `vendtab` should always be non-empty?
     pub fn data(&self) -> Data<'_> {
         let mut baseval_raw = mem::MaybeUninit::uninit();
         let mut vertnbr_raw = mem::MaybeUninit::uninit();
@@ -316,6 +316,7 @@ impl Graph {
                 vlbltab,
                 edgetab,
                 edlotab,
+                _private_field: (),
             }
         };
 
