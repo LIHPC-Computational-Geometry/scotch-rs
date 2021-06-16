@@ -3,6 +3,7 @@ use crate::Num;
 use crate::Result;
 use crate::Strategy;
 use scotch_sys as s;
+use std::convert::TryFrom as _;
 use std::fs;
 use std::io;
 use std::mem;
@@ -240,6 +241,29 @@ impl Graph {
         } else {
             Err(Error::Other)
         }
+    }
+
+    /// The number of vertices and edges in the graph.
+    pub fn size(&self) -> (Num, Num) {
+        let inner = &self.inner as *const s::SCOTCH_Graph;
+        let mut vertnbr = mem::MaybeUninit::uninit();
+        let mut edgenbr = mem::MaybeUninit::uninit();
+
+        // SAFETY: vertnbr and edgenbr are initialized by SCOTCH_graphSize.
+        let (vertnbr, edgenbr) = unsafe {
+            s::SCOTCH_graphSize(inner, vertnbr.as_mut_ptr(), edgenbr.as_mut_ptr());
+            (vertnbr.assume_init(), edgenbr.assume_init())
+        };
+
+        #[cfg(debug_assertions)]
+        {
+            usize::try_from(vertnbr)
+                .expect("Scotch internal error: returned a negative graph size");
+            usize::try_from(edgenbr)
+                .expect("Scotch internal error: returned a negative graph size");
+        }
+
+        (vertnbr, edgenbr)
     }
 
     /// Underlying graph data.
