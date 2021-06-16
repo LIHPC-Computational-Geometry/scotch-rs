@@ -4,15 +4,10 @@ use std::process;
 
 fn main() {
     println!("cargo:rustc-link-lib=scotch");
-
-    // Take into account $CFLAGS and $LDFLAGS
-    let cflags = env::var("CFLAGS").unwrap_or_default();
-    //let ldflags = env::var("LDFLAGS").unwrap_or_default();
-    let ldflags = String::new();
-    let clang_args = cflags.split(' ').chain(ldflags.split(' '));
+    println!("cargo:rustc-link-lib=scotcherr");
+    println!("cargo:rerun-if-changed=wrapper.h");
 
     let bindings = bindgen::builder()
-        .clang_args(clang_args)
         .header("wrapper.h")
         .generate()
         .unwrap_or_else(|()| {
