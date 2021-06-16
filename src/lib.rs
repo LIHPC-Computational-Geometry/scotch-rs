@@ -2,11 +2,13 @@
 
 #![allow(unused_unsafe)]
 
+pub use crate::architecture::Architecture;
 pub use crate::graph::Graph;
 pub use crate::strategy::Strategy;
 use scotch_sys as s;
 use std::fmt;
 
+pub mod architecture;
 pub mod graph;
 pub mod strategy;
 
