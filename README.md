@@ -18,6 +18,15 @@ headers of Scotch, respectively.
 
 Once these variables are set, you can build the bindings with `cargo build`.
 
+### Build the documentation
+
+If your scotch installation lies in a non-standard path, you will need to set
+the `RUSTDOCFLAGS` environment variable to build the documentation:
+
+    export RUSTDOCFLAGS="-C link-arg=-L$SCOTCHDIR/lib"
+
+Then you can call `cargo doc --no-deps --open`.
+
 ## License
 
 This program is distributed under the terms of both the MIT license and the
