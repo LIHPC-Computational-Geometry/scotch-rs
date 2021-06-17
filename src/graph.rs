@@ -1,3 +1,4 @@
+use crate::Architecture;
 use crate::Error;
 use crate::Num;
 use crate::Result;
@@ -11,6 +12,73 @@ use std::os::unix;
 use std::path;
 use std::ptr;
 use std::slice;
+use unix::io::IntoRawFd as _;
+
+pub struct Mapping<'a> {
+    inner: s::SCOTCH_Mapping,
+    graph: &'a mut Graph,
+}
+
+impl<'a> Mapping<'a> {
+    pub fn compute(&mut self, strategy: &mut Strategy) -> Result<&mut Mapping<'a>> {
+        let inner_graph = &mut self.graph.inner as *mut s::SCOTCH_Graph;
+        let inner_mapping = &mut self.inner as *mut s::SCOTCH_Mapping;
+        let inner_strategy = &mut strategy.inner as *mut s::SCOTCH_Strat;
+
+        unsafe {
+            if s::SCOTCH_graphMapCompute(inner_graph, inner_mapping, inner_strategy) != 0 {
+                return Err(Error::Other);
+            }
+        }
+
+        Ok(self)
+    }
+
+    unsafe fn save(&self, fd: unix::io::RawFd) -> io::Result<()> {
+        // SAFETY: caller must make sure the file descriptor is valid for writing.
+        let file = unsafe { crate::fdopen(fd, "w\0")? };
+
+        let inner_graph = &self.graph.inner as *const s::SCOTCH_Graph;
+        let inner_mapping = &self.inner as *const s::SCOTCH_Mapping;
+
+        // SAFETY: file descriptor is valid and inner is initialized.
+        unsafe {
+            let ret = s::SCOTCH_graphMapSave(inner_graph, inner_mapping, file);
+            s::fclose(file);
+            if ret != 0 {
+                return Err(io::ErrorKind::Other.into());
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn write_to_stdout(&self) -> io::Result<()> {
+        unsafe { self.save(1) }
+    }
+
+    pub fn write_to_stderr(&self) -> io::Result<()> {
+        unsafe { self.save(2) }
+    }
+
+    pub fn write_to_file(&self, path: impl AsRef<path::Path>) -> io::Result<()> {
+        let file = fs::File::create(path)?;
+        let fd = file.into_raw_fd();
+
+        // SAFETY: file is open for writing and is not a shared memory object.
+        unsafe { self.save(fd) }
+    }
+}
+
+impl Drop for Mapping<'_> {
+    fn drop(&mut self) {
+        unsafe {
+            let inner_graph = &self.graph.inner as *const s::SCOTCH_Graph;
+            let inner_mapping = &mut self.inner as *mut s::SCOTCH_Mapping;
+            s::SCOTCH_graphMapExit(inner_graph, inner_mapping);
+        }
+    }
+}
 
 /// Deconstructed graph data.
 ///
@@ -160,8 +228,6 @@ impl Graph {
     }
 
     pub fn from_file(path: impl AsRef<path::Path>, baseval: Num) -> io::Result<Graph> {
-        use unix::io::IntoRawFd as _;
-
         let file = fs::File::open(path)?;
         let fd = file.into_raw_fd();
 
@@ -342,6 +408,35 @@ impl Graph {
         d.check();
 
         d
+    }
+
+    pub fn mapping<'a>(
+        &'a mut self,
+        architecture: &'a Architecture,
+        parttab: &'a mut [Num],
+    ) -> Mapping<'a> {
+        let inner_graph = &self.inner as *const s::SCOTCH_Graph;
+        let mut inner_mapping = mem::MaybeUninit::uninit();
+        let inner_arch = &architecture.inner as *const s::SCOTCH_Arch;
+
+        // SAFETY: inner_mapping is initialized when SCOTCH_graphMapInit returns zero.
+        let inner_mapping = unsafe {
+            if s::SCOTCH_graphMapInit(
+                inner_graph,
+                inner_mapping.as_mut_ptr(),
+                inner_arch,
+                parttab.as_mut_ptr(),
+            ) != 0
+            {
+                panic!("Scotch internal error during mapping initialization");
+            }
+            inner_mapping.assume_init()
+        };
+
+        Mapping {
+            inner: inner_mapping,
+            graph: self,
+        }
     }
 
     /// Compute a partition with overlap of the given graph structure with respect to the given
