@@ -34,7 +34,7 @@ impl Architecture {
     /// The given file descriptor must be valid for reading and must not be a shared memory object.
     unsafe fn load(fd: unix::io::RawFd) -> io::Result<Architecture> {
         // SAFETY: caller must make sure the file descriptor is valid for reading.
-        let file = unsafe { crate::fdopen(fd, "r\0") };
+        let file = unsafe { crate::fdopen(fd, "r\0")? };
 
         let mut architecture = Architecture::new();
         let inner = &mut architecture.inner as *mut s::SCOTCH_Arch;

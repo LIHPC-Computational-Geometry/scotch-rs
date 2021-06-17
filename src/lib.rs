@@ -7,6 +7,8 @@ pub use crate::graph::Graph;
 pub use crate::strategy::Strategy;
 use scotch_sys as s;
 use std::fmt;
+use std::io;
+use std::os::unix;
 
 pub mod architecture;
 pub mod graph;
@@ -58,3 +60,19 @@ impl fmt::Display for Error {
 impl std::error::Error for Error {}
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+/// Convenience wrapper around [s::fdopen].
+///
+/// # Safety
+///
+/// Two assumptions are made and must be uphold by the caller:
+///
+/// - `fd` must be valid for reading or writing, depending on the given `mode`,
+/// - the `mode` string must end with a nul byte.
+unsafe fn fdopen(fd: unix::io::RawFd, mode: &str) -> io::Result<*mut s::FILE> {
+    let file = s::fdopen(fd, mode.as_ptr() as *const i8);
+    if file.is_null() {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(file)
+}

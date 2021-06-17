@@ -137,13 +137,7 @@ impl Graph {
     /// The given file descriptor must be valid for reading and must not be a shared memory object.
     unsafe fn load(fd: unix::io::RawFd, baseval: Num) -> io::Result<Graph> {
         // SAFETY: caller must make sure the file descriptor is valid for reading.
-        let file = unsafe {
-            let file = s::fdopen(fd, "r\0".as_ptr() as *const i8);
-            if file.is_null() {
-                return Err(io::Error::last_os_error());
-            }
-            file
-        };
+        let file = unsafe { crate::fdopen(fd, "r\0")? };
 
         let mut graph = Graph::new();
         let inner = &mut graph.inner as *mut s::SCOTCH_Graph;
