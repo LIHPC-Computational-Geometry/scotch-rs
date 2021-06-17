@@ -1,4 +1,28 @@
 //! A wrapper around Scotch bindings.
+//!
+//! This crate provides a thin but idiomatic API for libscotch.
+//!
+//! # Example
+//!
+//! Here is an example of graph partitioning:
+//!
+//! ```rust
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! let partnbr = 3; // divide the graph in three parts.
+//! let mut strat = scotch::Strategy::new(); // use the default strategy.
+//! let arch = scotch::Architecture::complete(partnbr); // all parts are equal.
+//! let mut graph = scotch::Graph::from_file("testdata/grid.grf", -1)?; // load a graph file.
+//!
+//! // Partition the graph:
+//! let (vertnbr, _edgenbr) = graph.size();
+//! let mut parttab = vec![0; vertnbr as usize];
+//! graph
+//!     .mapping(&arch, &mut parttab)
+//!     .compute(&mut strat)?
+//!     .write_to_stdout()?;
+//! # Ok(())
+//! # }
+//! ```
 
 #![allow(unused_unsafe)]
 
@@ -39,12 +63,22 @@ fn bindings_are_for_the_correct_version_of_scotch() {
 /// work.
 pub type Num = s::SCOTCH_Num;
 
+#[cfg(debug_assertions)]
 fn trusted_num_to_usize(n: Num) -> usize {
     use std::convert::TryFrom;
-
     usize::try_from(n).expect(&format!("Scotch returned a bad size: {}", n))
 }
 
+#[cfg(not(debug_assertions))]
+fn trusted_num_to_usize(n: Num) -> usize {
+    n as usize
+}
+
+/// Error type for Scotch functions.
+///
+/// Since Scotch gives no way to differentiate errors, this enum has only one variant.  It is,
+/// however, made non-exhaustive to ease migrations to future Scotch versions where error values
+/// have meaning.
 #[derive(Debug)]
 #[non_exhaustive]
 pub enum Error {
@@ -59,6 +93,7 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
+/// Convenience wrapper around [std::result::Result] which bears the Scotch error type.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Convenience wrapper around [s::fdopen].

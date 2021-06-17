@@ -14,12 +14,21 @@ use std::ptr;
 use std::slice;
 use unix::io::IntoRawFd as _;
 
+/// A mapping between a source graph and an architecture.
+///
+/// Equivalent of `SCOTCH_Mapping`.
 pub struct Mapping<'a> {
     inner: s::SCOTCH_Mapping,
     graph: &'a mut Graph,
 }
 
 impl<'a> Mapping<'a> {
+    /// Equivalent of `SCOTCH_graphMapCompute`.
+    ///
+    /// # Mutability
+    ///
+    /// While this function modifies neither the graph nor the strategy, Scotch doesn't specify any
+    /// `const` modifier and the Rust borrows must be mutable.
     pub fn compute(&mut self, strategy: &mut Strategy) -> Result<&mut Mapping<'a>> {
         let inner_graph = &mut self.graph.inner as *mut s::SCOTCH_Graph;
         let inner_mapping = &mut self.inner as *mut s::SCOTCH_Mapping;
@@ -34,6 +43,13 @@ impl<'a> Mapping<'a> {
         Ok(self)
     }
 
+    /// Equivalent of `SCOTCH_graphMapSave`.
+    ///
+    /// This function closes the given file descriptor.
+    ///
+    /// # Safety
+    ///
+    /// The given file descriptor must be valid for writing and must not be a shared memory object.
     unsafe fn save(&self, fd: unix::io::RawFd) -> io::Result<()> {
         // SAFETY: caller must make sure the file descriptor is valid for writing.
         let file = unsafe { crate::fdopen(fd, "w\0")? };
@@ -53,14 +69,27 @@ impl<'a> Mapping<'a> {
         Ok(())
     }
 
+    /// Write the mapping to standard output.
+    ///
+    /// This function closes standard output.
+    ///
+    /// Convenience wrapper around `SCOTCH_graphMapSave`.
     pub fn write_to_stdout(&self) -> io::Result<()> {
         unsafe { self.save(1) }
     }
 
+    /// Write the mapping to standard error.
+    ///
+    /// This function closes standard error.
+    ///
+    /// Convenience wrapper around `SCOTCH_graphMapSave`.
     pub fn write_to_stderr(&self) -> io::Result<()> {
         unsafe { self.save(2) }
     }
 
+    /// Write the mapping to the given file.
+    ///
+    /// Convenience wrapper around `SCOTCH_graphMapSave`.
     pub fn write_to_file(&self, path: impl AsRef<path::Path>) -> io::Result<()> {
         let file = fs::File::create(path)?;
         let fd = file.into_raw_fd();
@@ -165,6 +194,7 @@ impl<'a> Data<'a> {
         }
     }
 
+    /// The number of vertices.
     pub fn vertnbr(&self) -> Num {
         let verttab_len = self.verttab.len();
         if self.vendtab.is_empty() {
@@ -198,6 +228,8 @@ impl Graph {
 
     /// Load a [Graph] from the given file descriptor.
     ///
+    /// Equivalent of `SCOTCH_graphLoad`.
+    ///
     /// This function closes the given file descriptor.
     ///
     /// # Safety
@@ -222,11 +254,19 @@ impl Graph {
         Ok(graph)
     }
 
+    /// Build a [Graph] from the data found in standard input.
+    ///
+    /// This function closes standard input.
+    ///
+    /// Convenience wrapper around `SCOTCH_graphLoad`.
     pub fn from_stdin(baseval: Num) -> io::Result<Graph> {
         // SAFETY: Standard input is open for reading and is not a shared memory object.
         unsafe { Graph::load(0, baseval) }
     }
 
+    /// Build a [Graph] from the data found in the given file.
+    ///
+    /// Convenience wrapper around `SCOTCH_graphLoad`.
     pub fn from_file(path: impl AsRef<path::Path>, baseval: Num) -> io::Result<Graph> {
         let file = fs::File::open(path)?;
         let fd = file.into_raw_fd();
@@ -236,17 +276,27 @@ impl Graph {
     }
 
     /// Set the `baseval` and retrieve its old value.
+    ///
+    /// Equivalent of `SCOTCH_graphBase`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics iff `baseval` is neither 0 nor 1.
     pub fn set_base(&mut self, baseval: Num) -> Num {
+        assert!(
+            baseval == 0 || baseval == 1,
+            "baseval must either be 0 or 1"
+        );
         let inner = &mut self.inner as *mut s::SCOTCH_Graph;
         unsafe { s::SCOTCH_graphBase(inner, baseval) }
     }
 
     /// Fill the source graph with data.
     ///
-    /// This function returns `Ok(())` if Scotch successfully filled the graph, and `Err(())` else.
-    ///
     /// During development stage, it is recommended to call [Graph::check] after calling this
     /// function, to ensure graph data is consistent.
+    ///
+    /// Equivalent of `SCOTCH_graphBuild`.
     pub fn build(&mut self, data: &Data) -> Result<()> {
         let vendtab = if data.vendtab.is_empty() {
             ptr::null()
@@ -271,7 +321,7 @@ impl Graph {
 
         let inner = &mut self.inner as *mut s::SCOTCH_Graph;
 
-        // SAFETY: hopefully this function's invariants are enforced with above asserts.
+        // SAFETY: hopefully this function's invariants are enforced by Data.
         unsafe {
             let ret_code = s::SCOTCH_graphBuild(
                 inner,
@@ -293,6 +343,9 @@ impl Graph {
         Ok(())
     }
 
+    /// Verify the integrity of the graph.
+    ///
+    /// Equivalent of `SCOTCH_graphCheck`.
     pub fn check(&self) -> Result<()> {
         let inner = &self.inner as *const s::SCOTCH_Graph;
         let ret_code = unsafe { s::SCOTCH_graphCheck(inner) };
@@ -304,6 +357,8 @@ impl Graph {
     }
 
     /// The number of vertices and edges in the graph.
+    ///
+    /// Equivalent of `SCOTCH_graphSize`.
     pub fn size(&self) -> (Num, Num) {
         let inner = &self.inner as *const s::SCOTCH_Graph;
         let mut vertnbr = mem::MaybeUninit::uninit();
@@ -328,7 +383,9 @@ impl Graph {
 
     /// Underlying graph data.
     ///
-    /// `vendtab` should always be non-empty?
+    /// The resulting `vendtab` should always be non-empty?
+    ///
+    /// Equivalent of `SCOTCH_graphData`.
     pub fn data(&self) -> Data<'_> {
         let mut baseval_raw = mem::MaybeUninit::uninit();
         let mut vertnbr_raw = mem::MaybeUninit::uninit();
@@ -410,11 +467,30 @@ impl Graph {
         d
     }
 
+    /// Create a [Mapping] between this graph and the given [Architecture].
+    ///
+    /// Equivalent of `SCOTCH_graphMapInit`.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the length of `parttab` is not equal to the number of vertices in
+    /// the graph.
+    ///
+    /// # Mutability
+    ///
+    /// While this function doesn't modify the graph, Scotch doesn't specify the `const` modifier
+    /// and the Rust borrow must be mutable.
     pub fn mapping<'a>(
         &'a mut self,
         architecture: &'a Architecture,
         parttab: &'a mut [Num],
     ) -> Mapping<'a> {
+        assert_eq!(
+            parttab.len(),
+            self.data().vertnbr() as usize,
+            "the length of parttab is not the number of vertices"
+        );
+
         let inner_graph = &self.inner as *const s::SCOTCH_Graph;
         let mut inner_mapping = mem::MaybeUninit::uninit();
         let inner_arch = &architecture.inner as *const s::SCOTCH_Arch;
@@ -441,6 +517,8 @@ impl Graph {
 
     /// Compute a partition with overlap of the given graph structure with respect to the given
     /// strategy.
+    ///
+    /// Equivalent of `SCOTCH_graphPartOvl`.
     ///
     /// # Panics
     ///
