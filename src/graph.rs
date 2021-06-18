@@ -169,8 +169,8 @@ impl<'a> Data<'a> {
     /// Panic iff the data structure is invalid.
     fn check(&self) {
         assert!(self.baseval == 0 || self.baseval == 1);
-        assert!(self.verttab.len() < Num::MAX as usize, "Array too large");
-        assert!(self.edgetab.len() < Num::MAX as usize, "Array too large");
+        let _ = Num::try_from(self.verttab.len()).expect("verttab is larger than Num::MAX");
+        let _ = Num::try_from(self.edgetab.len()).expect("edgetab is larger than Num::MAX");
 
         if self.vendtab.is_empty() {
             assert_ne!(self.verttab.len(), 0);
