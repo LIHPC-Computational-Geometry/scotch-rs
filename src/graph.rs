@@ -122,8 +122,8 @@ impl Drop for Mapping<'_> {
 /// - if `vendtab` is non-empty,
 ///     1. `verttab` and `vendtab` must have the same length,
 ///     2. `velotab`, if non-empty, must have the same length as `verttab`, and
-///     3. `vlbltab`, if non-empty, must have the same length as `verttab`, and
-/// - `edlotab`, if non-empty, must have the same length as `edgetab`.
+///     3. `vlbltab`, if non-empty, must have the same length as `verttab`,
+/// - `edlotab`, if non-empty, must have the same length as `edgetab`,
 /// - The length of `verttab` must fit in a [Num],
 /// - The length of `edgetab` must fit in a [Num].
 pub struct Data<'a> {
