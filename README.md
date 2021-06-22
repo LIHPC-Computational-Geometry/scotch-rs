@@ -9,8 +9,8 @@ shared libraries in order to build these bindings.  If those are in non-standard
 locations, please use the following commands:
 
     export SCOTCHDIR=path/to/your/scotch/installation
-    export CFLAGS="-I$SCOTCHDIR/include"
-    export RUSTFLAGS="-C link-arg=-L$SCOTCHDIR/lib"
+    export CPATH="$SCOTCHDIR/include"
+    export RUSTFLAGS="-L$SCOTCHDIR/lib"
 
 The environment variable `$SCOTCHDIR` must point to a directory containing a
 `lib/` and a `include/` directory containing the shared libraries and the
@@ -23,7 +23,7 @@ Once these variables are set, you can build the bindings with `cargo build`.
 If your Scotch installation lies in a non-standard path, you will need to set
 the `RUSTDOCFLAGS` environment variable to build the documentation:
 
-    export RUSTDOCFLAGS="-C link-arg=-L$SCOTCHDIR/lib"
+    export RUSTDOCFLAGS="-L$SCOTCHDIR/lib"
 
 Then you can call `cargo doc --no-deps --open`.
 
