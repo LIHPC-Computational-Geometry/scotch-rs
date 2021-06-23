@@ -326,7 +326,7 @@ impl Graph {
             let ret_code = s::SCOTCH_graphBuild(
                 inner,
                 data.baseval,
-                data.verttab.len() as Num,
+                data.vertnbr(),
                 data.verttab.as_ptr(),
                 vendtab,
                 velotab,
