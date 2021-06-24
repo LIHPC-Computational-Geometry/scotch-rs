@@ -7,6 +7,7 @@ use scotch_sys as s;
 use std::convert::TryFrom as _;
 use std::fs;
 use std::io;
+use std::marker;
 use std::mem;
 use std::os::unix;
 use std::path;
@@ -17,19 +18,19 @@ use unix::io::IntoRawFd as _;
 /// A mapping between a source graph and an architecture.
 ///
 /// Equivalent of `SCOTCH_Mapping`.
-pub struct Mapping<'a> {
+pub struct Mapping<'m, 'g> {
     inner: s::SCOTCH_Mapping,
-    graph: &'a mut Graph,
+    graph: &'m mut Graph<'g>,
 }
 
-impl<'a> Mapping<'a> {
+impl<'m, 'g> Mapping<'m, 'g> {
     /// Equivalent of `SCOTCH_graphMapCompute`.
     ///
     /// # Mutability
     ///
     /// While this function modifies neither the graph nor the strategy, Scotch doesn't specify any
     /// `const` modifier and the Rust borrows must be mutable.
-    pub fn compute(&mut self, strategy: &mut Strategy) -> Result<&mut Mapping<'a>> {
+    pub fn compute(&mut self, strategy: &mut Strategy) -> Result<&mut Mapping<'m, 'g>> {
         let inner_graph = &mut self.graph.inner as *mut s::SCOTCH_Graph;
         let inner_mapping = &mut self.inner as *mut s::SCOTCH_Mapping;
         let inner_strategy = &mut strategy.inner as *mut s::SCOTCH_Strat;
@@ -99,7 +100,7 @@ impl<'a> Mapping<'a> {
     }
 }
 
-impl Drop for Mapping<'_> {
+impl Drop for Mapping<'_, '_> {
     fn drop(&mut self) {
         unsafe {
             let inner_graph = &self.graph.inner as *const s::SCOTCH_Graph;
@@ -206,13 +207,14 @@ impl<'a> Data<'a> {
 }
 
 /// Equivalent of `SCOTCH_Graph`.
-pub struct Graph {
+pub struct Graph<'a> {
     inner: s::SCOTCH_Graph,
+    _graph_data_lifetime: marker::PhantomData<&'a ()>,
 }
 
-impl Graph {
+impl<'a> Graph<'a> {
     /// Equivalent of `SCOTCH_graphInit`.
-    pub fn new() -> Graph {
+    fn new() -> Graph<'a> {
         let mut inner = mem::MaybeUninit::uninit();
 
         // SAFETY: inner should be initialized if SCOTCH_graphInit returns zero.
@@ -223,7 +225,63 @@ impl Graph {
             inner.assume_init()
         };
 
-        Graph { inner }
+        Graph {
+            inner,
+            _graph_data_lifetime: marker::PhantomData,
+        }
+    }
+
+    /// Make a new graph from the given data.
+    ///
+    /// During development stage, it is recommended to call [Graph::check] after calling this
+    /// function, to ensure graph data is consistent.
+    ///
+    /// Equivalent of `SCOTCH_graphBuild`.
+    pub fn build(data: &Data<'a>) -> Result<Graph<'a>> {
+        let vendtab = if data.vendtab.is_empty() {
+            ptr::null()
+        } else {
+            data.vendtab.as_ptr()
+        };
+        let velotab = if data.velotab.is_empty() {
+            ptr::null()
+        } else {
+            data.velotab.as_ptr()
+        };
+        let vlbltab = if data.vlbltab.is_empty() {
+            ptr::null()
+        } else {
+            data.vlbltab.as_ptr()
+        };
+        let edlotab = if data.edlotab.is_empty() {
+            ptr::null()
+        } else {
+            data.edlotab.as_ptr()
+        };
+
+        let mut graph = Graph::new();
+        let inner = &mut graph.inner as *mut s::SCOTCH_Graph;
+
+        // SAFETY: hopefully this function's invariants are enforced by Data.
+        unsafe {
+            let ret_code = s::SCOTCH_graphBuild(
+                inner,
+                data.baseval,
+                data.vertnbr(),
+                data.verttab.as_ptr(),
+                vendtab,
+                velotab,
+                vlbltab,
+                data.edgetab.len() as Num,
+                data.edgetab.as_ptr(),
+                edlotab,
+            );
+            if ret_code != 0 {
+                return Err(Error::Other);
+            }
+        }
+
+        Ok(graph)
     }
 
     /// Load a [Graph] from the given file descriptor.
@@ -235,7 +293,7 @@ impl Graph {
     /// # Safety
     ///
     /// The given file descriptor must be valid for reading and must not be a shared memory object.
-    unsafe fn load(fd: unix::io::RawFd, baseval: Num) -> io::Result<Graph> {
+    unsafe fn load(fd: unix::io::RawFd, baseval: Num) -> io::Result<Graph<'static>> {
         // SAFETY: caller must make sure the file descriptor is valid for reading.
         let file = unsafe { crate::fdopen(fd, "r\0")? };
 
@@ -259,7 +317,7 @@ impl Graph {
     /// This function closes standard input.
     ///
     /// Convenience wrapper around `SCOTCH_graphLoad`.
-    pub fn from_stdin(baseval: Num) -> io::Result<Graph> {
+    pub fn from_stdin(baseval: Num) -> io::Result<Graph<'static>> {
         // SAFETY: Standard input is open for reading and is not a shared memory object.
         unsafe { Graph::load(0, baseval) }
     }
@@ -267,7 +325,7 @@ impl Graph {
     /// Build a [Graph] from the data found in the given file.
     ///
     /// Convenience wrapper around `SCOTCH_graphLoad`.
-    pub fn from_file(path: impl AsRef<path::Path>, baseval: Num) -> io::Result<Graph> {
+    pub fn from_file(path: impl AsRef<path::Path>, baseval: Num) -> io::Result<Graph<'static>> {
         let file = fs::File::open(path)?;
         let fd = file.into_raw_fd();
 
@@ -289,58 +347,6 @@ impl Graph {
         );
         let inner = &mut self.inner as *mut s::SCOTCH_Graph;
         unsafe { s::SCOTCH_graphBase(inner, baseval) }
-    }
-
-    /// Fill the source graph with data.
-    ///
-    /// During development stage, it is recommended to call [Graph::check] after calling this
-    /// function, to ensure graph data is consistent.
-    ///
-    /// Equivalent of `SCOTCH_graphBuild`.
-    pub fn build(&mut self, data: &Data) -> Result<()> {
-        let vendtab = if data.vendtab.is_empty() {
-            ptr::null()
-        } else {
-            data.vendtab.as_ptr()
-        };
-        let velotab = if data.velotab.is_empty() {
-            ptr::null()
-        } else {
-            data.velotab.as_ptr()
-        };
-        let vlbltab = if data.vlbltab.is_empty() {
-            ptr::null()
-        } else {
-            data.vlbltab.as_ptr()
-        };
-        let edlotab = if data.edlotab.is_empty() {
-            ptr::null()
-        } else {
-            data.edlotab.as_ptr()
-        };
-
-        let inner = &mut self.inner as *mut s::SCOTCH_Graph;
-
-        // SAFETY: hopefully this function's invariants are enforced by Data.
-        unsafe {
-            let ret_code = s::SCOTCH_graphBuild(
-                inner,
-                data.baseval,
-                data.vertnbr(),
-                data.verttab.as_ptr(),
-                vendtab,
-                velotab,
-                vlbltab,
-                data.edgetab.len() as Num,
-                data.edgetab.as_ptr(),
-                edlotab,
-            );
-            if ret_code != 0 {
-                return Err(Error::Other);
-            }
-        }
-
-        Ok(())
     }
 
     /// Verify the integrity of the graph.
@@ -386,7 +392,7 @@ impl Graph {
     /// The resulting `vendtab` should always be non-empty?
     ///
     /// Equivalent of `SCOTCH_graphData`.
-    pub fn data(&self) -> Data<'_> {
+    pub fn data(&self) -> Data<'a> {
         let mut baseval_raw = mem::MaybeUninit::uninit();
         let mut vertnbr_raw = mem::MaybeUninit::uninit();
         let mut verttab_raw = mem::MaybeUninit::uninit();
@@ -480,11 +486,14 @@ impl Graph {
     ///
     /// While this function doesn't modify the graph, Scotch doesn't specify the `const` modifier
     /// and the Rust borrow must be mutable.
-    pub fn mapping<'a>(
-        &'a mut self,
-        architecture: &'a Architecture,
-        parttab: &'a mut [Num],
-    ) -> Mapping<'a> {
+    pub fn mapping<'m>(
+        &'m mut self,
+        architecture: &'m Architecture,
+        parttab: &'m mut [Num],
+    ) -> Mapping<'m, 'a>
+    where
+        'a: 'm,
+    {
         assert_eq!(
             parttab.len(),
             self.data().vertnbr() as usize,
@@ -553,7 +562,7 @@ impl Graph {
     }
 }
 
-impl Drop for Graph {
+impl Drop for Graph<'_> {
     fn drop(&mut self) {
         unsafe {
             let inner = &mut self.inner as *mut s::SCOTCH_Graph;
