@@ -1,3 +1,5 @@
+//! Functions and data structure related to [Architecture].
+
 use crate::Num;
 use scotch_sys as s;
 use std::io;
@@ -5,6 +7,7 @@ use std::mem;
 use std::os::unix;
 use std::path;
 
+/// Equivalent of `SCOTCH_Arch`.
 pub struct Architecture {
     pub(crate) inner: s::SCOTCH_Arch,
 }
@@ -51,11 +54,19 @@ impl Architecture {
         Ok(architecture)
     }
 
+    /// Build an [Architecture] from the data found in standard input.
+    ///
+    /// This function closes standard input.
+    ///
+    /// Convenience wrapper around `SCOTCH_archLoad`.
     pub fn from_stdin() -> io::Result<Architecture> {
         // SAFETY: Standard input is open for reading and is not a shared memory object.
         unsafe { Architecture::load(0) }
     }
 
+    /// Build an [Architecture] from the data found in the given file.
+    ///
+    /// Convenience wrapper around `SCOTCH_archLoad`.
     pub fn from_file(path: impl AsRef<path::Path>) -> io::Result<Architecture> {
         use std::fs;
         use unix::io::IntoRawFd as _;
@@ -67,6 +78,7 @@ impl Architecture {
         unsafe { Architecture::load(fd) }
     }
 
+    /// Equivalent of `SCOTCH_archCmplt`.
     pub fn complete(partnbr: Num) -> Architecture {
         let mut architecture = Architecture::new();
         let inner = &mut architecture.inner as *mut s::SCOTCH_Arch;

@@ -25,6 +25,7 @@
 //! ```
 
 #![allow(unused_unsafe)]
+#![deny(missing_docs)]
 
 pub use crate::architecture::Architecture;
 pub use crate::graph::Graph;
@@ -32,7 +33,7 @@ pub use crate::strategy::Strategy;
 use scotch_sys as s;
 use std::fmt;
 use std::io;
-use std::os::unix;
+use std::os;
 
 pub mod architecture;
 pub mod graph;
@@ -75,14 +76,9 @@ fn trusted_num_to_usize(n: Num) -> usize {
 }
 
 /// Error type for Scotch functions.
-///
-/// Since Scotch gives no way to differentiate errors, this enum has only one variant.  It is,
-/// however, made non-exhaustive to ease migrations to future Scotch versions where error values
-/// have meaning.
 #[derive(Debug)]
-#[non_exhaustive]
-pub enum Error {
-    Other,
+pub struct Error {
+    _non_exhaustive: (),
 }
 
 impl fmt::Display for Error {
@@ -96,6 +92,23 @@ impl std::error::Error for Error {}
 /// Convenience wrapper around [std::result::Result] which bears the Scotch error type.
 pub type Result<T> = std::result::Result<T, Error>;
 
+trait ErrorCode {
+    /// Makes a [Result] from a return code (int) from Scotch.
+    fn wrap(self) -> Result<()>;
+}
+
+impl ErrorCode for os::raw::c_int {
+    fn wrap(self) -> Result<()> {
+        if self == 0 {
+            Ok(())
+        } else {
+            Err(Error {
+                _non_exhaustive: (),
+            })
+        }
+    }
+}
+
 /// Convenience wrapper around [s::fdopen].
 ///
 /// # Safety
@@ -104,7 +117,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 ///
 /// - `fd` must be valid for reading or writing, depending on the given `mode`,
 /// - the `mode` string must end with a nul byte.
-unsafe fn fdopen(fd: unix::io::RawFd, mode: &str) -> io::Result<*mut s::FILE> {
+unsafe fn fdopen(fd: os::unix::io::RawFd, mode: &str) -> io::Result<*mut s::FILE> {
     let file = s::fdopen(fd, mode.as_ptr() as *const i8);
     if file.is_null() {
         return Err(io::Error::last_os_error());

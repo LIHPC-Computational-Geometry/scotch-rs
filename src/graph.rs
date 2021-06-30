@@ -1,5 +1,7 @@
+//! Functions and data structures related to [Graph]s.
+
 use crate::Architecture;
-use crate::Error;
+use crate::ErrorCode;
 use crate::Num;
 use crate::Result;
 use crate::Strategy;
@@ -36,9 +38,7 @@ impl<'m, 'g> Mapping<'m, 'g> {
         let inner_strategy = &mut strategy.inner as *mut s::SCOTCH_Strat;
 
         unsafe {
-            if s::SCOTCH_graphMapCompute(inner_graph, inner_mapping, inner_strategy) != 0 {
-                return Err(Error::Other);
-            }
+            s::SCOTCH_graphMapCompute(inner_graph, inner_mapping, inner_strategy).wrap()?;
         }
 
         Ok(self)
@@ -128,13 +128,36 @@ impl Drop for Mapping<'_, '_> {
 /// - The length of `verttab` must fit in a [Num],
 /// - The length of `edgetab` must fit in a [Num].
 pub struct Data<'a> {
+    /// Graph base value for arrays (typically 0).
     pub baseval: Num,
+
+    /// Adjency start index array.
+    ///
+    /// Adjacent nodes of node #i are stored in
+    /// `&edgetab[verttab[i]..vendtab[i]]`.
     pub verttab: &'a [Num],
+
+    /// Adjency end index array.
+    ///
+    /// Adjacent nodes of node #i are stored in
+    /// `&edgetab[verttab[i]..vendtab[i]]`.
+    ///
+    /// This is typically empty, and Scotch sets it to the default
+    /// `&verttab[1..]`.
     pub vendtab: &'a [Num],
+
+    /// Vertex load array.
     pub velotab: &'a [Num],
+
+    /// Vertex label array.
     pub vlbltab: &'a [Num],
+
+    /// Adjency array.
     pub edgetab: &'a [Num],
+
+    /// Edge load array.
     pub edlotab: &'a [Num],
+
     _private_field: (), // allow new fields to be added
 }
 
@@ -143,7 +166,8 @@ impl<'a> Data<'a> {
     ///
     /// # Panics
     ///
-    /// The invariants of [Data] must be uphold, otherwise this function will panic.
+    /// The invariants of [Data] must be uphold, otherwise this function will
+    /// panic.
     pub fn new(
         baseval: Num,
         verttab: &'a [Num],
@@ -264,7 +288,7 @@ impl<'a> Graph<'a> {
 
         // SAFETY: hopefully this function's invariants are enforced by Data.
         unsafe {
-            let ret_code = s::SCOTCH_graphBuild(
+            s::SCOTCH_graphBuild(
                 inner,
                 data.baseval,
                 data.vertnbr(),
@@ -275,10 +299,8 @@ impl<'a> Graph<'a> {
                 data.edgetab.len() as Num,
                 data.edgetab.as_ptr(),
                 edlotab,
-            );
-            if ret_code != 0 {
-                return Err(Error::Other);
-            }
+            )
+            .wrap()?;
         }
 
         Ok(graph)
@@ -354,12 +376,7 @@ impl<'a> Graph<'a> {
     /// Equivalent of `SCOTCH_graphCheck`.
     pub fn check(&self) -> Result<()> {
         let inner = &self.inner as *const s::SCOTCH_Graph;
-        let ret_code = unsafe { s::SCOTCH_graphCheck(inner) };
-        if ret_code == 0 {
-            Ok(())
-        } else {
-            Err(Error::Other)
-        }
+        unsafe { s::SCOTCH_graphCheck(inner).wrap() }
     }
 
     /// The number of vertices and edges in the graph.
@@ -552,13 +569,7 @@ impl<'a> Graph<'a> {
         let inner_strat = &mut strategy.inner as *mut s::SCOTCH_Strat;
         let parttab = parttab.as_mut_ptr();
 
-        unsafe {
-            if s::SCOTCH_graphPartOvl(inner_graph, num_parts, inner_strat, parttab) != 0 {
-                return Err(Error::Other);
-            }
-        }
-
-        Ok(())
+        unsafe { s::SCOTCH_graphPartOvl(inner_graph, num_parts, inner_strat, parttab).wrap() }
     }
 }
 

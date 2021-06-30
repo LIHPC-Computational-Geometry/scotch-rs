@@ -1,14 +1,18 @@
-use crate::Error;
+//! Functions and data structure related to [Strategy].
+
+use crate::ErrorCode;
 use crate::Result;
 use scotch_sys as s;
 use std::ffi;
 use std::mem;
 
+/// Equivalent of `SCOTCH_Strat`.
 pub struct Strategy {
     pub(crate) inner: s::SCOTCH_Strat,
 }
 
 impl Strategy {
+    /// Equivalent of `SCOTCH_stratInit`.
     pub fn new() -> Strategy {
         let mut inner = mem::MaybeUninit::uninit();
 
@@ -22,17 +26,12 @@ impl Strategy {
         Strategy { inner }
     }
 
+    /// Equivalent of `SCOTCH_startGraphPartOvl`.
     pub fn graph_part_ovl(&mut self, strategy_string: impl AsRef<ffi::CStr>) -> Result<()> {
         let inner = &mut self.inner as *mut s::SCOTCH_Strat;
         let strategy_string = strategy_string.as_ref().as_ptr();
 
-        unsafe {
-            if s::SCOTCH_stratGraphPartOvl(inner, strategy_string) != 0 {
-                return Err(Error::Other);
-            }
-        }
-
-        Ok(())
+        unsafe { s::SCOTCH_stratGraphPartOvl(inner, strategy_string).wrap() }
     }
 }
 
