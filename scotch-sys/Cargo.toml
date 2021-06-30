@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["Hubert Hirtz <hubert@hirtz.pm>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
+repository = "https://github.com/LIHPC-Computational-Geometry/scotch-rs"
+description = "Raw FFI to Scotch, the graph partitioner, graph clusterer and sparse matrix orderer"
+readme = "../README.md"
+categories = ["external-ffi-bindings", "mathematics"]
+keywords = ["graph", "mesh", "matrix", "partitioning", "ordering"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
