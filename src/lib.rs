@@ -25,6 +25,7 @@
 //! ```
 
 #![allow(unused_unsafe)]
+#![warn(clippy::doc_markdown)]
 #![deny(missing_docs)]
 
 pub use crate::architecture::Architecture;
@@ -67,7 +68,7 @@ pub type Num = s::SCOTCH_Num;
 #[cfg(debug_assertions)]
 fn trusted_num_to_usize(n: Num) -> usize {
     use std::convert::TryFrom;
-    usize::try_from(n).expect(&format!("Scotch returned a bad size: {}", n))
+    usize::try_from(n).unwrap_or_else(|_| panic!("Scotch returned a bad size: {}", n))
 }
 
 #[cfg(not(debug_assertions))]
@@ -76,10 +77,21 @@ fn trusted_num_to_usize(n: Num) -> usize {
 }
 
 /// Error type for Scotch functions.
+///
+/// # Error handling
+///
+/// Scotch doesn't provide a way to differentiate errors.  When an error is
+/// returned by a function, Scotch will typically already have printed an error
+/// message on standard error.
+///
+/// Some errors are hidden from these bindings as panics, that is the Rust
+/// function panics if Scotch returns an error. This should only happen when
+/// there is a mismatch between Scotch's target architecture and its
+/// configuration (e.g. type size mismatch).  These checks are enabled when
+/// Scotch is built with debug assertions enabled.
 #[derive(Debug)]
-pub struct Error {
-    _non_exhaustive: (),
-}
+#[non_exhaustive]
+pub struct Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -89,7 +101,10 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-/// Convenience wrapper around [std::result::Result] which bears the Scotch error type.
+/// Convenience wrapper around [`std::result::Result`] which bears the Scotch
+/// error type.
+///
+/// See [`Error`] for notes on error handling.
 pub type Result<T> = std::result::Result<T, Error>;
 
 trait ErrorCode {
@@ -102,14 +117,12 @@ impl ErrorCode for os::raw::c_int {
         if self == 0 {
             Ok(())
         } else {
-            Err(Error {
-                _non_exhaustive: (),
-            })
+            Err(Error {})
         }
     }
 }
 
-/// Convenience wrapper around [s::fdopen].
+/// Convenience wrapper around [`s::fdopen`].
 ///
 /// # Safety
 ///

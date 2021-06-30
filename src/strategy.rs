@@ -1,4 +1,4 @@
-//! Functions and data structure related to [Strategy].
+//! Functions and data structure related to [`Strategy`].
 
 use crate::ErrorCode;
 use crate::Result;
@@ -27,6 +27,11 @@ impl Strategy {
     }
 
     /// Equivalent of `SCOTCH_startGraphPartOvl`.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error when Scotch cannot parse the given
+    /// `strategy_string`.
     pub fn graph_part_ovl(&mut self, strategy_string: impl AsRef<ffi::CStr>) -> Result<()> {
         let inner = &mut self.inner as *mut s::SCOTCH_Strat;
         let strategy_string = strategy_string.as_ref().as_ptr();
@@ -41,5 +46,11 @@ impl Drop for Strategy {
             let inner = &mut self.inner as *mut s::SCOTCH_Strat;
             s::SCOTCH_stratFree(inner);
         }
+    }
+}
+
+impl Default for Strategy {
+    fn default() -> Strategy {
+        Strategy::new()
     }
 }

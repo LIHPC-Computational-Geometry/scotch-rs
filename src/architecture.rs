@@ -1,4 +1,4 @@
-//! Functions and data structure related to [Architecture].
+//! Functions and data structure related to [Architecture]s.
 
 use crate::Num;
 use scotch_sys as s;
@@ -14,7 +14,7 @@ pub struct Architecture {
 
 impl Architecture {
     /// Equivalent of `SCOTCH_archInit`.
-    pub fn new() -> Architecture {
+    fn new() -> Architecture {
         let mut inner = mem::MaybeUninit::uninit();
 
         // SAFETY: inner should be initialized if SCOTCH_archInit returns zero.
@@ -28,13 +28,14 @@ impl Architecture {
         Architecture { inner }
     }
 
-    /// Load an [Architecture] from the given file descriptor.
+    /// Load an [`Architecture`] from the given file descriptor.
     ///
     /// This function closes the given file descriptor.
     ///
     /// # Safety
     ///
-    /// The given file descriptor must be valid for reading and must not be a shared memory object.
+    /// The given file descriptor must be valid for reading and must not be a
+    /// shared memory object.
     unsafe fn load(fd: unix::io::RawFd) -> io::Result<Architecture> {
         // SAFETY: caller must make sure the file descriptor is valid for reading.
         let file = unsafe { crate::fdopen(fd, "r\0")? };
@@ -54,7 +55,7 @@ impl Architecture {
         Ok(architecture)
     }
 
-    /// Build an [Architecture] from the data found in standard input.
+    /// Build an [`Architecture`] from the data found in standard input.
     ///
     /// This function closes standard input.
     ///
@@ -64,7 +65,7 @@ impl Architecture {
         unsafe { Architecture::load(0) }
     }
 
-    /// Build an [Architecture] from the data found in the given file.
+    /// Build an [`Architecture`] from the data found in the given file.
     ///
     /// Convenience wrapper around `SCOTCH_archLoad`.
     pub fn from_file(path: impl AsRef<path::Path>) -> io::Result<Architecture> {

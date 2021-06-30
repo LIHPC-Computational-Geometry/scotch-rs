@@ -125,8 +125,9 @@ impl Drop for Mapping<'_, '_> {
 ///     2. `velotab`, if non-empty, must have the same length as `verttab`, and
 ///     3. `vlbltab`, if non-empty, must have the same length as `verttab`,
 /// - `edlotab`, if non-empty, must have the same length as `edgetab`,
-/// - The length of `verttab` must fit in a [Num],
-/// - The length of `edgetab` must fit in a [Num].
+/// - The length of `verttab` must fit in a [`Num`],
+/// - The length of `edgetab` must fit in a [`Num`].
+#[non_exhaustive]
 pub struct Data<'a> {
     /// Graph base value for arrays (typically 0).
     pub baseval: Num,
@@ -157,8 +158,6 @@ pub struct Data<'a> {
 
     /// Edge load array.
     pub edlotab: &'a [Num],
-
-    _private_field: (), // allow new fields to be added
 }
 
 impl<'a> Data<'a> {
@@ -166,7 +165,7 @@ impl<'a> Data<'a> {
     ///
     /// # Panics
     ///
-    /// The invariants of [Data] must be uphold, otherwise this function will
+    /// The invariants of [`Data`] must be uphold, otherwise this function will
     /// panic.
     pub fn new(
         baseval: Num,
@@ -185,7 +184,6 @@ impl<'a> Data<'a> {
             vlbltab,
             edgetab,
             edlotab,
-            _private_field: (),
         };
         d.check();
         d
@@ -257,8 +255,8 @@ impl<'a> Graph<'a> {
 
     /// Make a new graph from the given data.
     ///
-    /// During development stage, it is recommended to call [Graph::check] after calling this
-    /// function, to ensure graph data is consistent.
+    /// During development stage, it is recommended to call [`Graph::check`]
+    /// after calling this function, to ensure graph data is consistent.
     ///
     /// Equivalent of `SCOTCH_graphBuild`.
     pub fn build(data: &Data<'a>) -> Result<Graph<'a>> {
@@ -306,7 +304,7 @@ impl<'a> Graph<'a> {
         Ok(graph)
     }
 
-    /// Load a [Graph] from the given file descriptor.
+    /// Load a [`Graph`] from the given file descriptor.
     ///
     /// Equivalent of `SCOTCH_graphLoad`.
     ///
@@ -314,7 +312,8 @@ impl<'a> Graph<'a> {
     ///
     /// # Safety
     ///
-    /// The given file descriptor must be valid for reading and must not be a shared memory object.
+    /// The given file descriptor must be valid for reading and must not be a
+    /// shared memory object.
     unsafe fn load(fd: unix::io::RawFd, baseval: Num) -> io::Result<Graph<'static>> {
         // SAFETY: caller must make sure the file descriptor is valid for reading.
         let file = unsafe { crate::fdopen(fd, "r\0")? };
@@ -334,7 +333,7 @@ impl<'a> Graph<'a> {
         Ok(graph)
     }
 
-    /// Build a [Graph] from the data found in standard input.
+    /// Build a [`Graph`] from the data found in standard input.
     ///
     /// This function closes standard input.
     ///
@@ -371,7 +370,8 @@ impl<'a> Graph<'a> {
         unsafe { s::SCOTCH_graphBase(inner, baseval) }
     }
 
-    /// Verify the integrity of the graph.
+    /// Verify the integrity of the graph and returns an error iff the graph
+    /// is invalid.
     ///
     /// Equivalent of `SCOTCH_graphCheck`.
     pub fn check(&self) -> Result<()> {
@@ -480,7 +480,6 @@ impl<'a> Graph<'a> {
                 vlbltab,
                 edgetab,
                 edlotab,
-                _private_field: (),
             }
         };
 
@@ -490,19 +489,19 @@ impl<'a> Graph<'a> {
         d
     }
 
-    /// Create a [Mapping] between this graph and the given [Architecture].
+    /// Create a [`Mapping`] between this graph and the given [`Architecture`].
     ///
     /// Equivalent of `SCOTCH_graphMapInit`.
     ///
     /// # Panics
     ///
-    /// This function panics if the length of `parttab` is not equal to the number of vertices in
-    /// the graph.
+    /// This function panics if the length of `parttab` is not equal to the
+    /// number of vertices in the graph.
     ///
     /// # Mutability
     ///
-    /// While this function doesn't modify the graph, Scotch doesn't specify the `const` modifier
-    /// and the Rust borrow must be mutable.
+    /// While this function doesn't modify the graph, Scotch doesn't specify the
+    /// `const` modifier and the Rust borrow must be mutable.
     pub fn mapping<'m>(
         &'m mut self,
         architecture: &'m Architecture,
@@ -541,19 +540,31 @@ impl<'a> Graph<'a> {
         }
     }
 
-    /// Compute a partition with overlap of the given graph structure with respect to the given
-    /// strategy.
+    /// Compute a partition with overlap of the given graph structure with
+    /// respect to the given strategy.
     ///
     /// Equivalent of `SCOTCH_graphPartOvl`.
     ///
     /// # Panics
     ///
-    /// This function panics if the length of parttab is lower than the number of vertices.
+    /// This function panics if the length of parttab is lower than the number
+    /// of vertices.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error in the following cases:
+    ///
+    /// - the strategy isn't made for overlap partitioning (the caller hasn't
+    ///   previously called [`Strategy::graph_part_ovl`],
+    /// - the strategy fails to apply,
+    /// - Scotch encounters an out of memory error,
+    /// - Scotch encounters an internal error.
     ///
     /// # Mutability
     ///
-    /// While this function modifies neither the graph nor the strategy, Scotch doesn't specify any
-    /// `const` modifier and the Rust borrows must be mutable.
+    /// While this function modifies neither the graph nor the strategy, Scotch
+    /// doesn't specify any `const` modifier and the Rust borrows must be
+    /// mutable.
     pub fn part_ovl(
         &mut self,
         num_parts: Num,
