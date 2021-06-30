@@ -4,9 +4,13 @@ Idiomatic bindings to the [Scotch] partitioner.
 
 ## Building
 
-Bindings to Scotch are made on the fly.  You'll need Scotch's header files and
-shared libraries in order to build these bindings.  If those are in non-standard
-locations, please use the following commands:
+Prerequisites:
+
+- Scotch
+- clang v3.9 or above
+
+Bindings to Scotch are made on the fly.  If Scotch is installed in a
+non-standard location, please use the following commands:
 
     export SCOTCHDIR=path/to/your/scotch/installation
     export CPATH="$SCOTCHDIR/include"

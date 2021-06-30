@@ -13,4 +13,4 @@ keywords = ["graph", "mesh", "matrix", "partitioning", "ordering"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-bindgen = { version = "0.58", default-features = false, features = ["runtime"] }
+bindgen = { version = "0.58", default-features = false }
