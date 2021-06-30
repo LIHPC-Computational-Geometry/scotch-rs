@@ -33,4 +33,7 @@ This program is distributed under the terms of both the MIT license and the
 Apache License (Version 2.0).  See `LICENSE-APACHE` and `LICENSE-MIT` for
 details.
 
+Scotch is licensed under the `CeCILL-C` license, for which can find a copy here:
+<https://gitlab.inria.fr/scotch/scotch/-/raw/v6.1.0/doc/CeCILL-C_V1-en.txt>
+
 [Scotch]: https://gitlab.inria.fr/scotch/scotch/
