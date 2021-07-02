@@ -5,6 +5,7 @@ authors = ["Hubert Hirtz <hubert@hirtz.pm>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/LIHPC-Computational-Geometry/scotch-rs"
+documentation = "https://LIHPC-Computational-Geometry.github.io/scotch-rs/scotch-sys"
 description = "Raw FFI to Scotch, the graph partitioner, graph clusterer and sparse matrix orderer"
 readme = "../README.md"
 categories = ["external-ffi-bindings", "mathematics"]
