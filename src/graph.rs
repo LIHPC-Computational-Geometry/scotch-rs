@@ -128,7 +128,7 @@ impl Drop for Mapping<'_, '_> {
 /// - The length of `verttab` must fit in a [`Num`],
 /// - The length of `edgetab` must fit in a [`Num`].
 #[non_exhaustive]
-pub struct Data<'a> {
+pub struct Data<'d> {
     /// Graph base value for arrays (typically 0).
     pub baseval: Num,
 
@@ -136,7 +136,7 @@ pub struct Data<'a> {
     ///
     /// Adjacent nodes of node #i are stored in
     /// `&edgetab[verttab[i]..vendtab[i]]`.
-    pub verttab: &'a [Num],
+    pub verttab: &'d [Num],
 
     /// Adjency end index array.
     ///
@@ -145,22 +145,22 @@ pub struct Data<'a> {
     ///
     /// This is typically empty, and Scotch sets it to the default
     /// `&verttab[1..]`.
-    pub vendtab: &'a [Num],
+    pub vendtab: &'d [Num],
 
     /// Vertex load array.
-    pub velotab: &'a [Num],
+    pub velotab: &'d [Num],
 
     /// Vertex label array.
-    pub vlbltab: &'a [Num],
+    pub vlbltab: &'d [Num],
 
     /// Adjency array.
-    pub edgetab: &'a [Num],
+    pub edgetab: &'d [Num],
 
     /// Edge load array.
-    pub edlotab: &'a [Num],
+    pub edlotab: &'d [Num],
 }
 
-impl<'a> Data<'a> {
+impl<'d> Data<'d> {
     /// Group-up graph data.
     ///
     /// # Panics
@@ -169,13 +169,13 @@ impl<'a> Data<'a> {
     /// panic.
     pub fn new(
         baseval: Num,
-        verttab: &'a [Num],
-        vendtab: &'a [Num],
-        velotab: &'a [Num],
-        vlbltab: &'a [Num],
-        edgetab: &'a [Num],
-        edlotab: &'a [Num],
-    ) -> Data<'a> {
+        verttab: &'d [Num],
+        vendtab: &'d [Num],
+        velotab: &'d [Num],
+        vlbltab: &'d [Num],
+        edgetab: &'d [Num],
+        edlotab: &'d [Num],
+    ) -> Data<'d> {
         let d = Data {
             baseval,
             verttab,
@@ -229,14 +229,14 @@ impl<'a> Data<'a> {
 }
 
 /// Equivalent of `SCOTCH_Graph`.
-pub struct Graph<'a> {
+pub struct Graph<'g> {
     inner: s::SCOTCH_Graph,
-    _graph_data_lifetime: marker::PhantomData<&'a ()>,
+    _graph_data_lifetime: marker::PhantomData<&'g ()>,
 }
 
-impl<'a> Graph<'a> {
+impl<'g> Graph<'g> {
     /// Equivalent of `SCOTCH_graphInit`.
-    fn new() -> Graph<'a> {
+    fn new() -> Graph<'g> {
         let mut inner = mem::MaybeUninit::uninit();
 
         // SAFETY: inner should be initialized if SCOTCH_graphInit returns zero.
@@ -259,7 +259,7 @@ impl<'a> Graph<'a> {
     /// after calling this function, to ensure graph data is consistent.
     ///
     /// Equivalent of `SCOTCH_graphBuild`.
-    pub fn build(data: &Data<'a>) -> Result<Graph<'a>> {
+    pub fn build(data: &Data<'g>) -> Result<Graph<'g>> {
         let vendtab = if data.vendtab.is_empty() {
             ptr::null()
         } else {
@@ -409,7 +409,7 @@ impl<'a> Graph<'a> {
     /// The resulting `vendtab` should always be non-empty?
     ///
     /// Equivalent of `SCOTCH_graphData`.
-    pub fn data(&self) -> Data<'a> {
+    pub fn data(&self) -> Data<'_> {
         let mut baseval_raw = mem::MaybeUninit::uninit();
         let mut vertnbr_raw = mem::MaybeUninit::uninit();
         let mut verttab_raw = mem::MaybeUninit::uninit();
@@ -506,9 +506,9 @@ impl<'a> Graph<'a> {
         &'m mut self,
         architecture: &'m Architecture,
         parttab: &'m mut [Num],
-    ) -> Mapping<'m, 'a>
+    ) -> Mapping<'m, 'g>
     where
-        'a: 'm,
+        'g: 'm,
     {
         assert_eq!(
             parttab.len(),
