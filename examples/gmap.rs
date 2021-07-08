@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let architecture = Architecture::complete(partnbr as scotch::Num);
 
-    let mut graph = Graph::from_file(&args[2], -1)?;
+    let mut graph = Graph::from_file(&args[2], None)?;
     let (vertnbr, _) = graph.size();
     let mut parttab: Vec<scotch::Num> = vec![0; vertnbr as usize];
 

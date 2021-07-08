@@ -1,6 +1,7 @@
 //! Functions and data structures related to [Graph]s.
 
 use crate::Architecture;
+use crate::BaseVal;
 use crate::ErrorCode;
 use crate::Num;
 use crate::Result;
@@ -129,8 +130,8 @@ impl Drop for Mapping<'_, '_> {
 /// - The length of `edgetab` must fit in a [`Num`].
 #[non_exhaustive]
 pub struct Data<'a> {
-    /// Graph base value for arrays (typically 0).
-    pub baseval: Num,
+    /// Graph base value for arrays (typically [`BaseVal::C`]).
+    pub baseval: BaseVal,
 
     /// Adjency start index array.
     ///
@@ -168,7 +169,7 @@ impl<'a> Data<'a> {
     /// The invariants of [`Data`] must be uphold, otherwise this function will
     /// panic.
     pub fn new(
-        baseval: Num,
+        baseval: BaseVal,
         verttab: &'a [Num],
         vendtab: &'a [Num],
         velotab: &'a [Num],
@@ -191,7 +192,6 @@ impl<'a> Data<'a> {
 
     /// Panic iff the data structure is invalid.
     fn check(&self) {
-        assert!(self.baseval == 0 || self.baseval == 1);
         let _ = Num::try_from(self.verttab.len()).expect("verttab is larger than Num::MAX");
         let _ = Num::try_from(self.edgetab.len()).expect("edgetab is larger than Num::MAX");
 
@@ -288,7 +288,7 @@ impl<'a> Graph<'a> {
         unsafe {
             s::SCOTCH_graphBuild(
                 inner,
-                data.baseval,
+                data.baseval as Num,
                 data.vertnbr(),
                 data.verttab.as_ptr(),
                 vendtab,
@@ -314,12 +314,16 @@ impl<'a> Graph<'a> {
     ///
     /// The given file descriptor must be valid for reading and must not be a
     /// shared memory object.
-    unsafe fn load(fd: unix::io::RawFd, baseval: Num) -> io::Result<Graph<'static>> {
+    unsafe fn load(fd: unix::io::RawFd, baseval: Option<BaseVal>) -> io::Result<Graph<'static>> {
         // SAFETY: caller must make sure the file descriptor is valid for reading.
         let file = unsafe { crate::fdopen(fd, "r\0")? };
 
         let mut graph = Graph::new();
         let inner = &mut graph.inner as *mut s::SCOTCH_Graph;
+        let baseval = match baseval {
+            None => -1,
+            Some(b) => b as Num,
+        };
 
         // SAFETY: file descriptor is valid and inner has been initialized.
         unsafe {
@@ -338,7 +342,7 @@ impl<'a> Graph<'a> {
     /// This function closes standard input.
     ///
     /// Convenience wrapper around `SCOTCH_graphLoad`.
-    pub fn from_stdin(baseval: Num) -> io::Result<Graph<'static>> {
+    pub fn from_stdin(baseval: Option<BaseVal>) -> io::Result<Graph<'static>> {
         // SAFETY: Standard input is open for reading and is not a shared memory object.
         unsafe { Graph::load(0, baseval) }
     }
@@ -346,7 +350,7 @@ impl<'a> Graph<'a> {
     /// Build a [Graph] from the data found in the given file.
     ///
     /// Convenience wrapper around `SCOTCH_graphLoad`.
-    pub fn from_file(path: impl AsRef<path::Path>, baseval: Num) -> io::Result<Graph<'static>> {
+    pub fn from_file(path: impl AsRef<path::Path>, baseval: Option<BaseVal>) -> io::Result<Graph<'static>> {
         let file = fs::File::open(path)?;
         let fd = file.into_raw_fd();
 
@@ -357,17 +361,10 @@ impl<'a> Graph<'a> {
     /// Set the `baseval` and retrieve its old value.
     ///
     /// Equivalent of `SCOTCH_graphBase`.
-    ///
-    /// # Panics
-    ///
-    /// This function panics iff `baseval` is neither 0 nor 1.
-    pub fn set_base(&mut self, baseval: Num) -> Num {
-        assert!(
-            baseval == 0 || baseval == 1,
-            "baseval must either be 0 or 1"
-        );
+    pub fn set_base(&mut self, baseval: BaseVal) -> BaseVal {
         let inner = &mut self.inner as *mut s::SCOTCH_Graph;
-        unsafe { s::SCOTCH_graphBase(inner, baseval) }
+        let baseval = unsafe { s::SCOTCH_graphBase(inner, baseval as Num) };
+        BaseVal::from_num(baseval)
     }
 
     /// Verify the integrity of the graph and returns an error iff the graph
@@ -446,6 +443,7 @@ impl<'a> Graph<'a> {
             let edgetab_raw = edgetab_raw.assume_init();
             let edlotab_raw = edlotab_raw.assume_init();
 
+            let baseval = BaseVal::from_num(baseval_raw);
             let verttab: &[Num];
             let vendtab: &[Num];
             if vendtab_raw.is_null() {
@@ -473,7 +471,7 @@ impl<'a> Graph<'a> {
             };
 
             Data {
-                baseval: baseval_raw,
+                baseval,
                 verttab,
                 vendtab,
                 velotab,
