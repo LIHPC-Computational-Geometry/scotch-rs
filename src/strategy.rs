@@ -1,4 +1,4 @@
-//! Functions and data structure related to [`Strategy`].
+//! Functions and data structures related to [`Strategy`].
 
 use crate::ErrorCode;
 use crate::Result;

@@ -1,4 +1,4 @@
-//! Functions and data structure related to [Architecture]s.
+//! Functions and data structures related to [Architecture]s.
 
 use crate::Num;
 use scotch_sys as s;
