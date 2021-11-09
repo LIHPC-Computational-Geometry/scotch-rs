@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Strategy","Equivalent of `SCOTCH_Strat`."]]});

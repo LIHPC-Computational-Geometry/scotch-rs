@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Architecture","Equivalent of `SCOTCH_Arch`."]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Data","Deconstructed graph data."],["Graph","Equivalent of `SCOTCH_Graph`."],["Mapping","A mapping between a source graph and an architecture."]]});
