@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         strategy.graph_part_ovl(strategy_string)?;
     }
 
-    let mut graph = Graph::from_file(&args[2], -1)?;
+    let mut graph = Graph::from_file(&args[2], None)?;
     let vertnbr = graph.data().vertnbr() as usize;
     let baseval = graph.data().baseval as usize;
     let mut parttax = vec![0; vertnbr];

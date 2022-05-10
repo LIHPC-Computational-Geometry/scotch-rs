@@ -11,7 +11,7 @@
 //! let partnbr = 3; // divide the graph in three parts.
 //! let mut strat = scotch::Strategy::new(); // use the default strategy.
 //! let arch = scotch::Architecture::complete(partnbr); // all parts are equal.
-//! let mut graph = scotch::Graph::from_file("testdata/grid.grf", -1)?; // load a graph file.
+//! let mut graph = scotch::Graph::from_file("testdata/grid.grf", None)?; // load a graph file.
 //!
 //! // Partition the graph:
 //! let (vertnbr, _edgenbr) = graph.size();
@@ -74,6 +74,26 @@ fn trusted_num_to_usize(n: Num) -> usize {
 #[cfg(not(debug_assertions))]
 fn trusted_num_to_usize(n: Num) -> usize {
     n as usize
+}
+
+/// Numbering scheme for interoperability with Fortran programs.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum BaseVal {
+    /// C-style numbering which is assumed to start from 0.
+    C,
+
+    /// Fortran-style numbering which is assumed to start from 1.
+    Fortran,
+}
+
+impl BaseVal {
+    fn from_num(n: Num) -> BaseVal {
+        match n {
+            0 => BaseVal::C,
+            1 => BaseVal::Fortran,
+            n => panic!("unexpected baseval from scotch: {}", n),
+        }
+    }
 }
 
 /// Error type for Scotch functions.

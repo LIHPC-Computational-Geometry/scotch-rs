@@ -14,7 +14,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let architecture = Architecture::complete(partnbr);
 
     let mut graph = Graph::build(&scotch::graph::Data::new(
-        0,
+        scotch::BaseVal::C,
         &xadj,
         &[],
         &[],
