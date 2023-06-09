@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["architecture","graph","strategy"],"struct":["Error"],"type":["Num","Result"]};
