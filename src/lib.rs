@@ -47,7 +47,7 @@ compile_error!("Scotch is only supported on UNIX platforms");
 #[test]
 fn bindings_are_for_the_correct_version_of_scotch() {
     const BINDINGS_VERSION: u32 = 6;
-    const BINDINGS_RELEASE: u32 = 0;
+    const BINDINGS_RELEASE: u32 = 1;
     assert!(
         s::SCOTCH_VERSION == BINDINGS_VERSION && s::SCOTCH_RELEASE == BINDINGS_RELEASE,
         "Rust bindings to Scotch have been made for Scotch {}.{}, your version of Scotch is {}.{}",
