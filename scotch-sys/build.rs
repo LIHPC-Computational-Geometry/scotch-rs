@@ -10,8 +10,8 @@ fn main() {
     let bindings = bindgen::builder()
         .header("wrapper.h")
         .generate()
-        .unwrap_or_else(|()| {
-            eprintln!("Failed to generate bindings to Scotch");
+        .unwrap_or_else(|err| {
+            eprintln!("Failed to generate bindings to Scotch: {err}");
             process::exit(1);
         });
 

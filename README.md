@@ -7,7 +7,7 @@ Idiomatic bindings to the [Scotch] partitioner.
 Prerequisites:
 
 - Scotch
-- clang v3.9 or above
+- clang v5.0 or above
 
 Bindings to Scotch are made on the fly.  If Scotch is installed in a
 non-standard location, please use the following commands:
