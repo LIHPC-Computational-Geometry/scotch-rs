@@ -1,11 +1,10 @@
 [package]
 name = "scotch-sys"
-version = "0.1.1"
+version = "0.2.1"
 authors = ["Hubert Hirtz <hubert@hirtz.pm>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/LIHPC-Computational-Geometry/scotch-rs"
-documentation = "https://LIHPC-Computational-Geometry.github.io/scotch-rs/scotch_sys"
+repository = "https://github.com/LIHPC-Computational-Geometry/scotch-rs/tree/scotch-sys-0.2.0/scotch-sys"
 description = "Raw FFI to Scotch, the graph partitioner, graph clusterer and sparse matrix orderer"
 readme = "../README.md"
 categories = ["external-ffi-bindings", "mathematics"]
