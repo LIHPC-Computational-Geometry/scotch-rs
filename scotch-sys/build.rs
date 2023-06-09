@@ -4,6 +4,11 @@ use std::path::PathBuf;
 use std::process;
 
 fn main() {
+    if env::var_os("DOCS_RS").is_some() {
+        // Do not generate bindings when run in docs.rs.
+        return;
+    }
+
     println!("cargo:rustc-link-lib=scotch");
     println!("cargo:rustc-link-lib=scotcherr");
     println!("cargo:rerun-if-changed=wrapper.h");
