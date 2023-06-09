@@ -1,4 +1,5 @@
 use std::env;
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process;
 
@@ -6,6 +7,13 @@ fn main() {
     println!("cargo:rustc-link-lib=scotch");
     println!("cargo:rustc-link-lib=scotcherr");
     println!("cargo:rerun-if-changed=wrapper.h");
+
+    let mut cpath = env::var_os("CPATH").unwrap_or_else(OsString::new);
+    if !cpath.is_empty() {
+        cpath.push(":");
+    }
+    cpath.push("/usr/include/scotch");
+    env::set_var("CPATH", cpath);
 
     let bindings = bindgen::builder()
         .header("wrapper.h")
