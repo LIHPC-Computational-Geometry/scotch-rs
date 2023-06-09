@@ -3,12 +3,11 @@ members = [".", "scotch-sys"]
 
 [package]
 name = "scotch"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Hubert Hirtz <hubert@hirtz.pm>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/LIHPC-Computational-Geometry/scotch-rs"
-documentation = "https://LIHPC-Computational-Geometry.github.io/scotch-rs/scotch"
+repository = "https://github.com/LIHPC-Computational-Geometry/scotch-rs/tree/scotch-0.2.0"
 description = "Idiomatic wrapper for Scotch, the graph partitioner, graph clusterer and sparse matrix orderer"
 categories = ["api-bindings", "mathematics"]
 keywords = ["graph", "mesh", "matrix", "partitioning", "ordering"]
@@ -16,4 +15,4 @@ keywords = ["graph", "mesh", "matrix", "partitioning", "ordering"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-scotch-sys = { version = "0.1", path = "scotch-sys" }
+scotch-sys = { version = "0.2", path = "scotch-sys" }
