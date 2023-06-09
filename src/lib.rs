@@ -67,7 +67,6 @@ pub type Num = s::SCOTCH_Num;
 
 #[cfg(debug_assertions)]
 fn trusted_num_to_usize(n: Num) -> usize {
-    use std::convert::TryFrom;
     usize::try_from(n).unwrap_or_else(|_| panic!("Scotch returned a bad size: {}", n))
 }
 
