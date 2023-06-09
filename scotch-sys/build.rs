@@ -17,6 +17,12 @@ fn main() {
 
     let bindings = bindgen::builder()
         .header("wrapper.h")
+        .allowlist_function("SCOTCH_.*")
+        .allowlist_type("SCOTCH_.*")
+        .allowlist_var("SCOTCH_.*")
+        .allowlist_function("fdopen") // provide FILE*
+        .allowlist_function("fclose")
+        .opaque_type("FILE")
         .generate()
         .unwrap_or_else(|err| {
             eprintln!("Failed to generate bindings to Scotch: {err}");
