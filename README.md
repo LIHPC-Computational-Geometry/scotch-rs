@@ -8,6 +8,7 @@ Prerequisites:
 
 - Scotch
 - clang v5.0 or above
+- Rust v1.60.0 or above
 
 Bindings to Scotch are made on the fly.  If Scotch is installed in a
 non-standard location, please use the following commands:
