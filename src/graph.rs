@@ -489,6 +489,35 @@ impl<'g> Graph<'g> {
         d
     }
 
+    /// Redo a previous done mapping.
+    ///
+    /// Equivalent of `SCOTCH_graphRemap`.
+    pub fn remap(
+        &mut self,
+        architecture: &mut Architecture,
+        parotab: &[Num],
+        emraval: f64,
+        vmlotab: &[Num],
+        strategy: &mut Strategy,
+        parttab: &mut [Num],
+    ) -> Result<()> {
+        assert_eq!(parttab.len(), parotab.len());
+        assert_eq!(parttab.len(), self.data().vertnbr() as usize);
+
+        unsafe {
+            s::SCOTCH_graphRemap(
+                &mut self.inner,
+                &architecture.inner,
+                parotab.as_ptr() as *mut s::SCOTCH_Num,
+                emraval,
+                vmlotab.as_ptr(),
+                &mut strategy.inner,
+                parttab.as_mut_ptr(),
+            )
+            .wrap()
+        }
+    }
+
     /// Create a [`Mapping`] between this graph and the given [`Architecture`].
     ///
     /// Equivalent of `SCOTCH_graphMapInit`.
