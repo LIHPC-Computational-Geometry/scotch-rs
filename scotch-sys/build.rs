@@ -1,5 +1,4 @@
 use std::env;
-use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process;
 
@@ -13,7 +12,7 @@ fn main() {
     println!("cargo:rustc-link-lib=scotcherr");
     println!("cargo:rerun-if-changed=wrapper.h");
 
-    let mut cpath = env::var_os("CPATH").unwrap_or_else(OsString::new);
+    let mut cpath = env::var_os("CPATH").unwrap_or_default();
     if !cpath.is_empty() {
         cpath.push(":");
     }
