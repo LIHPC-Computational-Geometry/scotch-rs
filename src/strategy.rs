@@ -3,7 +3,7 @@
 use crate::ErrorCode;
 use crate::Result;
 use scotch_sys as s;
-use std::ffi;
+use std::ffi::CStr;
 use std::mem;
 
 /// Equivalent of `SCOTCH_Strat`.
@@ -26,13 +26,26 @@ impl Strategy {
         Strategy { inner }
     }
 
+    /// Equivalent of `SCOTCH_startGraphMap`.
+    ///
+    /// # Errors
+    ///
+    /// This function returns an error when Scotch cannot parse the given
+    /// `strategy_string`.
+    pub fn graph_map(&mut self, strategy_string: impl AsRef<CStr>) -> Result<()> {
+        let inner = &mut self.inner as *mut s::SCOTCH_Strat;
+        let strategy_string = strategy_string.as_ref().as_ptr();
+
+        unsafe { s::SCOTCH_stratGraphMap(inner, strategy_string).wrap() }
+    }
+
     /// Equivalent of `SCOTCH_startGraphPartOvl`.
     ///
     /// # Errors
     ///
     /// This function returns an error when Scotch cannot parse the given
     /// `strategy_string`.
-    pub fn graph_part_ovl(&mut self, strategy_string: impl AsRef<ffi::CStr>) -> Result<()> {
+    pub fn graph_part_ovl(&mut self, strategy_string: impl AsRef<CStr>) -> Result<()> {
         let inner = &mut self.inner as *mut s::SCOTCH_Strat;
         let strategy_string = strategy_string.as_ref().as_ptr();
 
